@@ -17,18 +17,16 @@ package com.google.cloud.healthcare.process.schema;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
+import com.google.cloud.healthcare.io.GcsInputReader;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import java.nio.channels.ReadableByteChannel;
 import javax.annotation.Nullable;
 
-/**
- * Utility methods for GCP related operations.
- */
+/** Utility methods for GCP related operations. */
 public class GcpUtil {
 
-  /**
-   * Instantiates a GCS client. If the credentials is null, then the default one is used.
-   */
+  /** Instantiates a GCS client. If the credentials is null, then the default one is used. */
   public static Storage getGcsClient(@Nullable GoogleCredentials credentials) {
     if (credentials != null) {
       return StorageOptions.newBuilder().setCredentials(credentials).build().getService();
@@ -37,9 +35,7 @@ public class GcpUtil {
     }
   }
 
-  /**
-   * Instantiates a GCS client. If the credentials is null, then the default one is used.
-   */
+  /** Instantiates a GCS client. If the credentials is null, then the default one is used. */
   public static BigQuery getBqClient(@Nullable GoogleCredentials credentials) {
     if (credentials != null) {
       return BigQueryOptions.newBuilder().setCredentials(credentials).build().getService();
@@ -48,4 +44,9 @@ public class GcpUtil {
     }
   }
 
+  /** Opens a file on GCS. If the credentials is null, then the default one is used. */
+  public static ReadableByteChannel openGcsFile(
+      @Nullable GoogleCredentials credentials, String name) {
+    return new GcsInputReader(credentials, name).getReadChannel();
+  }
 }

@@ -15,24 +15,25 @@
 package com.google.cloud.healthcare.process.pipeline;
 
 import com.google.cloud.healthcare.config.GcpConfiguration;
-import com.google.cloud.healthcare.io.GcsInputReader;
-import com.google.cloud.healthcare.process.pipeline.Chunk.Range;
+import com.google.cloud.healthcare.process.schema.GcpUtil;
 import com.google.common.collect.Lists;
+import com.google.common.io.ByteStreams;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 
-/**
- * A beam {@link DoFn} that converts split points to {@link Chunk} representations.
- */
-public class GcsGenerateChunksFn extends
-    DoFn<KV<String, Set<Long>>, KV<String, Chunk>> {
+/** A beam {@link DoFn} that reads chunked data from GCS according to split points. */
+public class GcsReadChunksFn extends DoFn<KV<String, Set<Long>>, KV<String, byte[]>> {
 
   private final GcpConfiguration config;
 
-  public GcsGenerateChunksFn(GcpConfiguration config) {
+  public GcsReadChunksFn(GcpConfiguration config) {
     this.config = config;
   }
 
@@ -45,12 +46,17 @@ public class GcsGenerateChunksFn extends
 
     String name = input.getKey();
 
-    for (int i = 0; i < splitPoints.size() - 1; i++) {
-      ctx.output(KV.of(
-          name,
-          new Chunk(
-              new GcsInputReader(config.getCredentials(), name),
-              new Range(splitPoints.get(i), splitPoints.get(i + 1)))));
+    try (ReadableByteChannel channel = GcpUtil.openGcsFile(config.getCredentials(), name);
+        InputStream is = Channels.newInputStream(channel)) {
+      ByteStreams.skipFully(is, splitPoints.get(0));
+      for (int i = 0; i < splitPoints.size() - 1; i++) {
+        int len = (int) (splitPoints.get(i + 1) - splitPoints.get(i));
+        byte[] content = new byte[len];
+        ByteStreams.readFully(is, content, 0, len);
+        ctx.output(KV.of(name, content));
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 }

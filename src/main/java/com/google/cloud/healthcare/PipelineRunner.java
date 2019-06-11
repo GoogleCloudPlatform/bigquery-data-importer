@@ -22,10 +22,9 @@ import com.google.cloud.healthcare.decompress.Decompressor;
 import com.google.cloud.healthcare.io.GcsInputReader;
 import com.google.cloud.healthcare.io.GcsOutputWriterFactory;
 import com.google.cloud.healthcare.io.InputReader;
-import com.google.cloud.healthcare.process.pipeline.GcsGenerateChunksFn;
 import com.google.cloud.healthcare.process.pipeline.GcsLoadToBigQueryFn;
+import com.google.cloud.healthcare.process.pipeline.GcsReadChunksFn;
 import com.google.cloud.healthcare.process.pipeline.GcsWriteAvroFn;
-import com.google.cloud.healthcare.process.pipeline.ReadDataFn;
 import com.google.cloud.healthcare.process.pipeline.csv.CsvAggregateHeadersFn;
 import com.google.cloud.healthcare.process.pipeline.csv.CsvDetectSchemaFn;
 import com.google.cloud.healthcare.process.pipeline.csv.CsvExtractHeadersFn;
@@ -59,6 +58,7 @@ import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.ParDo.SingleOutput;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -135,8 +135,9 @@ public class PipelineRunner {
     GcpConfiguration gcpConfig = GcpConfiguration.getInstance();
     PCollection<KV<String, List<String[]>>> parsedData = files
         .apply(splitFn.withSideInputs(headers))
-        .apply(ParDo.of(new GcsGenerateChunksFn(gcpConfig)))
-        .apply(ParDo.of(new ReadDataFn()))
+        .apply(ParDo.of(new GcsReadChunksFn(gcpConfig)))
+        // Reshuffle all chunk data for better scalability.
+        .apply(Reshuffle.viaRandomKey())
         .apply(parseFn);
 
     // Schema detection.
