@@ -182,7 +182,7 @@ public class ImportPipeline {
   }
 
   public static void main(String[] argv) {
-    OptionsParser parser = OptionsParser.builder().optionsClasses(PipelineOptions.class).build();
+    OptionsParser parser = OptionsParser.newOptionsParser(PipelineOptions.class);
     parser.parseAndExitUponError(argv);
     PipelineOptions options = parser.getOptions(PipelineOptions.class);
 
