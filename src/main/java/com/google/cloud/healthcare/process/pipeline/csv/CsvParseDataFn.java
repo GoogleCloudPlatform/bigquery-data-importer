@@ -19,26 +19,24 @@ import com.univocity.parsers.csv.CsvFormat;
 import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 import java.io.ByteArrayInputStream;
-import java.util.List;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 
-/**
- * A {@link DoFn} which parses a chunk of data into CSV.
- */
-public class CsvParseDataFn extends DoFn<KV<String, byte[]>, KV<String, List<String[]>>> {
+/** A {@link DoFn} which parses a chunk of data into CSV. */
+public class CsvParseDataFn extends DoFn<KV<String, byte[]>, KV<String, String[]>> {
   // The maximum number of rows in the CSV file, increasing this number will cause the job to
   // use more memory.
   private static final int MAX_COLUMNS = 8192;
 
   private final CsvConfiguration config;
+  private CsvParser parser;
 
   public CsvParseDataFn(CsvConfiguration config) {
     this.config = config;
   }
 
-  @ProcessElement
-  public void parse(ProcessContext ctx) {
+  @Setup
+  public void setUp() {
     CsvFormat format = new CsvFormat();
     format.setDelimiter(config.getDelimiter());
     format.setQuote(config.getQuote());
@@ -50,10 +48,14 @@ public class CsvParseDataFn extends DoFn<KV<String, byte[]>, KV<String, List<Str
     settings.setMaxCharsPerColumn(-1);
     settings.setNormalizeLineEndingsWithinQuotes(false);
 
-    CsvParser parser = new CsvParser(settings);
-    KV<String, byte[]> input = ctx.element();
-
-    ctx.output(KV.of(input.getKey(), parser.parseAll(new ByteArrayInputStream(input.getValue()))));
+    parser = new CsvParser(settings);
   }
 
+  @ProcessElement
+  public void parse(ProcessContext ctx) {
+    KV<String, byte[]> input = ctx.element();
+    parser
+        .parseAll(new ByteArrayInputStream(input.getValue()))
+        .forEach(row -> ctx.output(KV.of(input.getKey(), row)));
+  }
 }

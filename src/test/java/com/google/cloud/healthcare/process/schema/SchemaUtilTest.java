@@ -16,54 +16,54 @@ package com.google.cloud.healthcare.process.schema;
 
 import static org.junit.Assert.assertEquals;
 
+import com.google.api.services.bigquery.model.TableSchema;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.avro.Schema;
+import org.apache.beam.sdk.util.Transport;
 import org.junit.Test;
 
+/** Test for {@link SchemaUtil}. */
 public class SchemaUtilTest {
 
   private static final String TEST_SCHEMA =
       "{\n"
-          + "  \"type\" : \"record\",\n"
-          + "  \"name\" : \"healthcare\",\n"
-          + "  \"namespace\" : \"com.google.cloud.healthcare\",\n"
           + "  \"fields\" : [ {\n"
+          + "    \"mode\" : \"NULLABLE\",\n"
           + "    \"name\" : \"name1\",\n"
-          + "    \"type\" : [ \"int\", \"null\" ]\n"
+          + "    \"type\" : \"INT64\"\n"
           + "  }, {\n"
+          + "    \"mode\" : \"NULLABLE\",\n"
           + "    \"name\" : \"name2\",\n"
-          + "    \"type\" : [ \"long\", \"null\" ]\n"
+          + "    \"type\" : \"INT64\"\n"
           + "  }, {\n"
+          + "    \"mode\" : \"NULLABLE\",\n"
           + "    \"name\" : \"name3\",\n"
-          + "    \"type\" : [ \"double\", \"null\" ]\n"
+          + "    \"type\" : \"FLOAT64\"\n"
           + "  }, {\n"
+          + "    \"mode\" : \"NULLABLE\",\n"
           + "    \"name\" : \"name4\",\n"
-          + "    \"type\" : [ \"boolean\", \"null\" ]\n"
+          + "    \"type\" : \"BOOL\"\n"
           + "  }, {\n"
+          + "    \"mode\" : \"NULLABLE\",\n"
           + "    \"name\" : \"name5\",\n"
-          + "    \"type\" : {\n"
-          + "      \"type\" : \"int\",\n"
-          + "      \"logicalType\" : \"date\"\n"
-          + "    }\n"
+          + "    \"type\" : \"DATE\"\n"
           + "  }, {\n"
+          + "    \"mode\" : \"NULLABLE\",\n"
           + "    \"name\" : \"name6\",\n"
-          + "    \"type\" : {\n"
-          + "      \"type\" : \"long\",\n"
-          + "      \"logicalType\" : \"time-micros\"\n"
-          + "    }\n"
+          + "    \"type\" : \"TIME\"\n"
           + "  }, {\n"
+          + "    \"mode\" : \"NULLABLE\",\n"
           + "    \"name\" : \"name7\",\n"
-          + "    \"type\" : {\n"
-          + "      \"type\" : \"long\",\n"
-          + "      \"logicalType\" : \"timestamp-millis\"\n"
-          + "    }\n"
+          + "    \"type\" : \"DATETIME\"\n"
           + "  }, {\n"
+          + "    \"mode\" : \"NULLABLE\",\n"
           + "    \"name\" : \"name8\",\n"
-          + "    \"type\" : [ \"string\", \"null\" ]\n"
+          + "    \"type\" : \"STRING\"\n"
           + "  }, {\n"
+          + "    \"mode\" : \"NULLABLE\",\n"
           + "    \"name\" : \"name9\",\n"
-          + "    \"type\" : [ \"string\", \"null\" ]\n"
+          + "    \"type\" : \"STRING\"\n"
           + "  } ]\n"
           + "}";
 
@@ -82,15 +82,17 @@ public class SchemaUtilTest {
   }
 
   @Test
-  public void generate_expectedSchema() {
-    Schema schema = SchemaUtil.generateAvroSchema(new String[] {
+  public void generate_expectedSchema() throws IOException {
+    TableSchema schema = SchemaUtil.generateBigQueryTableSchema(new String[] {
         "name1", "name2", "name3", "name4", "name5", "name6", "name7", "name8", "name9"},
-        Arrays.asList(
+        new FieldType[] {
             FieldType.INT, FieldType.LONG, FieldType.DOUBLE,
             FieldType.BOOLEAN,
             FieldType.DATE, FieldType.TIME, FieldType.DATETIME,
-            FieldType.STRING, FieldType.UNKNOWN));
-    assertEquals("Generates expected schema.", TEST_SCHEMA, schema.toString(true));
+            FieldType.STRING, FieldType.UNKNOWN
+        });
+    assertEquals("Generates expected schema.", TEST_SCHEMA,
+        Transport.getJsonFactory().toPrettyString(schema));
   }
 
   @Test

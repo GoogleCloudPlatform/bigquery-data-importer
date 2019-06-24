@@ -19,6 +19,7 @@ import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
+/** Test for {@link FieldType}. */
 public class FieldTypeTest {
 
   @Test

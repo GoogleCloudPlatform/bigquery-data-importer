@@ -16,61 +16,34 @@ package com.google.cloud.healthcare.process.pipeline.csv;
 
 import com.google.cloud.healthcare.process.schema.FieldType;
 import com.google.cloud.healthcare.process.schema.SchemaUtil;
-import com.google.common.collect.Maps;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Streams;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
 import org.apache.beam.sdk.transforms.Combine.CombineFn;
-import org.apache.beam.sdk.values.KV;
 
 /**
  * A {@link CombineFn} which merges all pieces of schemas and generates a complete schema for
  * importing to BigQuery later.
  */
-public class CsvMergeSchemaFn extends CombineFn<KV<String, List<FieldType>>,
-    Map<String, List<FieldType>>, Map<String, FieldType[]>> {
+public class CsvMergeSchemaFn extends CombineFn<List<FieldType>, List<FieldType>, FieldType[]> {
 
   @Override
-  public Map<String, List<FieldType>> createAccumulator() {
-    return Maps.newHashMap();
+  public List<FieldType> createAccumulator() {
+    return Lists.newArrayList();
   }
 
   @Override
-  public Map<String, List<FieldType>> addInput(Map<String, List<FieldType>> accumulator,
-      KV<String, List<FieldType>> input) {
-    addOrMerge(accumulator, input.getKey(), input.getValue());
-    return accumulator;
+  public List<FieldType> addInput(List<FieldType> accumulator, List<FieldType> input) {
+    return SchemaUtil.merge(accumulator, input);
   }
 
   @Override
-  public Map<String, List<FieldType>> mergeAccumulators(Iterable<Map<String,
-      List<FieldType>>> accumulators) {
-    Map<String, List<FieldType>> result = Maps.newHashMap();
-    for (Map<String, List<FieldType>> acc : accumulators) {
-      for (String name : acc.keySet()) {
-        addOrMerge(result, name, acc.get(name));
-      }
-    }
-    return result;
-  }
-
-  private static void addOrMerge(Map<String, List<FieldType>> result, String name,
-      List<FieldType> value) {
-    List<FieldType> schema = result.get(name);
-    if (schema == null) {
-      result.put(name, value);
-    } else {
-      result.put(name, SchemaUtil.merge(schema, value));
-    }
+  public List<FieldType> mergeAccumulators(Iterable<List<FieldType>> accumulators) {
+    return Streams.stream(accumulators).reduce(SchemaUtil::merge).get();
   }
 
   @Override
-  public Map<String, FieldType[]> extractOutput(Map<String, List<FieldType>> accumulator) {
-    return accumulator.entrySet()
-        .stream()
-        .collect(Collectors.toMap(
-            Entry::getKey,
-            e -> e.getValue().toArray(new FieldType[e.getValue().size()])));
+  public FieldType[] extractOutput(List<FieldType> accumulator) {
+    return accumulator.toArray(new FieldType[0]);
   }
 }

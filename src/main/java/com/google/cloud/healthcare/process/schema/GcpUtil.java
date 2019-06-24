@@ -14,10 +14,12 @@
 
 package com.google.cloud.healthcare.process.schema;
 
+import com.google.api.services.bigquery.model.TableReference;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.healthcare.io.GcsInputReader;
+import com.google.cloud.healthcare.util.StringUtil;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import java.nio.channels.ReadableByteChannel;
@@ -46,7 +48,15 @@ public class GcpUtil {
 
   /** Opens a file on GCS. If the credentials is null, then the default one is used. */
   public static ReadableByteChannel openGcsFile(
-      @Nullable GoogleCredentials credentials, String name) {
-    return new GcsInputReader(credentials, name).getReadChannel();
+      @Nullable GoogleCredentials credentials, String uri) {
+    return new GcsInputReader(credentials, uri).getReadChannel();
+  }
+
+  /** Build a {@link TableReference} containing metadata of a BigQuery table. */
+  public static TableReference getBigQueryTableReference(
+      String projectId, String datasetId, String uri) {
+    // TODO(b/134162118): Check and fix BigQuery table ID if it is invalid.
+    String tableId = StringUtil.getGcsBaseName(uri);
+    return new TableReference().setProjectId(projectId).setDatasetId(datasetId).setTableId(tableId);
   }
 }

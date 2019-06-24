@@ -44,7 +44,7 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-/** Test for GcsReadChunksFn. */
+/** Test for {@link GcsReadChunksFn}. */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({GcpUtil.class})
 public class GcsReadChunksFnTest {

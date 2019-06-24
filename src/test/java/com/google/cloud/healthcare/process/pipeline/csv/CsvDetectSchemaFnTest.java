@@ -32,25 +32,49 @@ import org.apache.beam.sdk.values.PCollection;
 import org.junit.Rule;
 import org.junit.Test;
 
-/** Test for CsvDetectSchemaFn. */
+/** Test for {@link CsvDetectSchemaFn}. */
 public class CsvDetectSchemaFnTest {
 
-  private static final String FILENAME = "test_input_parse.csv";
+  private static final String FILENAME1 = "test_input_parse.csv";
+  private static final String FILENAME2 = "test_input_parse2.csv";
 
-  @Rule
-  public final transient TestPipeline p = TestPipeline.create();
+  @Rule public final transient TestPipeline p = TestPipeline.create();
 
   @Test
   public void detect_returnExpectedSchema() throws IOException, URISyntaxException {
-    URL url = this.getClass().getClassLoader().getResource(FILENAME);
-    byte[] bytes = Files.readAllBytes(Paths.get(url.toURI()));
+    URL url1 = this.getClass().getClassLoader().getResource(FILENAME1);
+    byte[] bytes1 = Files.readAllBytes(Paths.get(url1.toURI()));
+    URL url2 = this.getClass().getClassLoader().getResource(FILENAME2);
+    byte[] bytes2 = Files.readAllBytes(Paths.get(url2.toURI()));
 
-    PCollection<KV<String, byte[]>> input = p.apply(Create.of(KV.of(FILENAME, bytes)));
-    PCollection<KV<String, List<FieldType>>> output = input.apply(ParDo.of(new CsvParseDataFn(
-        CsvConfiguration.getInstance())))
-        .apply(ParDo.of(new CsvDetectSchemaFn()));
-    PAssert.thatSingleton(output).isEqualTo(KV.of(FILENAME,
-        Lists.newArrayList(FieldType.INT, FieldType.STRING, FieldType.STRING)));
+    PCollection<KV<String, byte[]>> input =
+        p.apply(Create.of(KV.of(FILENAME1, bytes1), KV.of(FILENAME2, bytes2)));
+    PCollection<KV<String, List<FieldType>>> output =
+        input
+            .apply(ParDo.of(new CsvParseDataFn(CsvConfiguration.getInstance())))
+            .apply(ParDo.of(new CsvDetectSchemaFn()));
+    PAssert.that(output)
+        .containsInAnyOrder(
+            KV.of(FILENAME1, Lists.newArrayList(FieldType.INT, FieldType.STRING, FieldType.STRING)),
+            KV.of(FILENAME1, Lists.newArrayList(FieldType.INT, FieldType.STRING, FieldType.STRING)),
+            KV.of(FILENAME1, Lists.newArrayList(FieldType.INT, FieldType.STRING, FieldType.STRING)),
+            KV.of(FILENAME1, Lists.newArrayList(FieldType.INT, FieldType.STRING, FieldType.STRING)),
+            KV.of(
+                FILENAME2,
+                Lists.newArrayList(
+                    FieldType.INT,
+                    FieldType.BOOLEAN,
+                    FieldType.DOUBLE,
+                    FieldType.STRING,
+                    FieldType.DATE)),
+            KV.of(
+                FILENAME2,
+                Lists.newArrayList(
+                    FieldType.INT,
+                    FieldType.BOOLEAN,
+                    FieldType.DOUBLE,
+                    FieldType.STRING,
+                    FieldType.DATE)));
     p.run();
   }
 }

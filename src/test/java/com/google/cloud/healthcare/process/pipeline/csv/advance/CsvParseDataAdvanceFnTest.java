@@ -20,7 +20,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -31,7 +30,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.junit.Rule;
 import org.junit.Test;
 
-/** Test for CsvParseDataAdvanceFn. */
+/** Test for {@link CsvParseDataAdvanceFn}. */
 public class CsvParseDataAdvanceFnTest {
   private static final String FILENAME = "test_input_parse.csv";
 
@@ -63,14 +62,12 @@ public class CsvParseDataAdvanceFnTest {
   }
 
   /** Flatten the result for easier comparison. */
-  public static class FlattenDoFn extends DoFn<KV<String, List<String[]>>, KV<String, String>> {
+  public static class FlattenDoFn extends DoFn<KV<String, String[]>, KV<String, String>> {
     @ProcessElement
     public void process(ProcessContext ctx) {
-      KV<String, List<String[]>> input = ctx.element();
-      for (String[] record : input.getValue()) {
-        for (String column : record) {
-          ctx.output(KV.of(input.getKey(), column));
-        }
+      KV<String, String[]> input = ctx.element();
+      for (String column : input.getValue()) {
+        ctx.output(KV.of(input.getKey(), column));
       }
     }
   }

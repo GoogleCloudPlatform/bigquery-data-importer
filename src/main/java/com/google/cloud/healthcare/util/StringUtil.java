@@ -16,7 +16,6 @@ package com.google.cloud.healthcare.util;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
-import java.util.UUID;
 import org.apache.commons.io.FilenameUtils;
 
 /** Utility class for processing strings. */
@@ -44,18 +43,6 @@ public class StringUtil {
 
   private static String getGcsBaseNameByPath(String path) {
     return FilenameUtils.getBaseName(path);
-  }
-
-  public static String getBqSrcUri(String gcsUri) {
-    String[] parts = splitGcsUri(gcsUri);
-    return String.format("%s%s/temp/avro/%s-*.avro",
-        GCS_URI_PREFIX, parts[0], getGcsBaseNameByPath(parts[1]));
-  }
-
-  public static String getGcsAvroUri(String gcsUri) {
-    String[] parts = splitGcsUri(gcsUri);
-    return String.format("%s/avro/%s-%s.avro",
-        getGcsTempDir(parts[0]), getGcsBaseNameByPath(parts[1]), UUID.randomUUID().toString());
   }
 
   public static String getGcsDecompressUri(String bucket) {

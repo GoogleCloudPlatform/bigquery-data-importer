@@ -18,7 +18,6 @@ import com.google.cloud.healthcare.process.schema.FieldType;
 import com.google.cloud.healthcare.process.schema.SchemaUtil;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 
@@ -26,18 +25,12 @@ import org.apache.beam.sdk.values.KV;
  * A {@link DoFn} that detects the schema for a chunk of data.
  */
 public class CsvDetectSchemaFn extends
-    DoFn<KV<String, List<String[]>>, KV<String, List<FieldType>>> {
+    DoFn<KV<String, String[]>, KV<String, List<FieldType>>> {
 
   @ProcessElement
   public void detect(ProcessContext ctx) {
-    KV<String, List<String[]>> input = ctx.element();
+    KV<String, String[]> input = ctx.element();
 
-    ctx.output(
-        KV.of(
-            input.getKey(),
-            SchemaUtil.merge(
-                input.getValue().stream()
-                    .map(r -> SchemaUtil.infer(Arrays.asList(r)))
-                    .collect(Collectors.toList()))));
+    ctx.output(KV.of(input.getKey(), SchemaUtil.infer(Arrays.asList(input.getValue()))));
   }
 }

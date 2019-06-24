@@ -40,7 +40,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-/** Test for GcsSplitCsvFn */
+/** Test for {@link GcsSplitCsvFn}. */
 @RunWith(Parameterized.class)
 public class GcsSplitCsvFnTest {
 

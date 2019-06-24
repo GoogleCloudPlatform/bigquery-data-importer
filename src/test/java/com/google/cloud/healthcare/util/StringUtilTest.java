@@ -71,11 +71,4 @@ public class StringUtilTest {
   public void getGcsDecompressUri_exception() {
     StringUtil.getGcsDecompressUri("");
   }
-
-  @Test
-  public void getBqSrcUri_expected() {
-    assertEquals("Return expected uri.",
-        "gs://bucket/temp/avro/file-*.avro",
-        StringUtil.getBqSrcUri("gs://bucket/path/to/file.csv"));
-  }
 }

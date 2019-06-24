@@ -14,6 +14,8 @@
 
 package com.google.cloud.healthcare.process.schema;
 
+import com.google.api.services.bigquery.model.TableFieldSchema;
+import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.healthcare.util.PrettyPrinter;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -25,25 +27,14 @@ import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.Temporal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.avro.LogicalTypes;
-import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
-import org.apache.avro.SchemaBuilder.FieldAssembler;
-import org.apache.avro.SchemaBuilder.FieldBuilder;
 
-/**
- * Utility class for handling schemas.
- */
+/** Utility class for handling schemas. */
 public class SchemaUtil {
-
-  // TODO(b/121042145): Support customized namespace and name.
-  private static final String SCHEMA_NAMESPACE = "com.google.cloud.healthcare";
-  private static final String RECORD_NAME = "healthcare";
 
   /**
    * Infer schema from a list of values. The typical input is a row in a CSV file.
@@ -92,59 +83,50 @@ public class SchemaUtil {
     return FieldType.STRING;
   }
 
-  public static Schema generateAvroSchema(String[] headers, List<FieldType> types) {
+  public static TableSchema generateBigQueryTableSchema(String[] headers, FieldType[] types) {
     // TODO(b/121042931): We should support ignoring bad rows to some number.
-    if (headers.length != types.size()) {
+    if (headers.length != types.length) {
       throw new IllegalArgumentException(
           String.format(
               "Encountered invalid input:\nheaders: %s\ntypes: %s",
-              PrettyPrinter.print(Arrays.asList(headers)), PrettyPrinter.print(types)));
+              PrettyPrinter.print(Arrays.asList(headers)),
+              PrettyPrinter.print(Arrays.asList(types))));
     }
-
-    FieldAssembler<Schema> builder = SchemaBuilder
-        .record(RECORD_NAME)
-        .namespace(SCHEMA_NAMESPACE).fields();
-    for (int i = 0; i < types.size(); i++) {
-      FieldBuilder<Schema> fieldBuilder = builder.name(headers[i]);
-
-      FieldType type = types.get(i);
-      switch (type) {
+    List<TableFieldSchema> fields = new ArrayList<>();
+    for (int i = 0; i < types.length; i++) {
+      TableFieldSchema field = new TableFieldSchema().setName(headers[i]).setMode("NULLABLE");
+      switch (types[i]) {
         case BOOLEAN:
-          builder = fieldBuilder.type().nullable().booleanType().noDefault();
+          field.setType("BOOL");
           break;
         case INT:
-          builder = fieldBuilder.type().nullable().intType().noDefault();
-          break;
         case LONG:
-          builder = fieldBuilder.type().nullable().longType().noDefault();
+          field.setType("INT64");
           break;
         case DOUBLE:
-          builder = fieldBuilder.type().nullable().doubleType().noDefault();
+          field.setType("FLOAT64");
           break;
         case DATE:
-          builder = fieldBuilder.type(LogicalTypes.date()
-              .addToSchema(Schema.create(Schema.Type.INT))).noDefault();
+          field.setType("DATE");
           break;
         case TIME:
-          builder = fieldBuilder.type(LogicalTypes.timeMicros()
-              .addToSchema(Schema.create(Schema.Type.LONG))).noDefault();
+          field.setType("TIME");
           break;
         case DATETIME:
-          builder = fieldBuilder.type(LogicalTypes.timestampMillis()
-              .addToSchema(Schema.create(Schema.Type.LONG))).noDefault();
+          field.setType("DATETIME");
           break;
         default:
-          builder = fieldBuilder.type().nullable().stringType().noDefault();
+          field.setType("STRING");
           break;
       }
+      fields.add(field);
     }
-
-    return builder.endRecord();
+    return new TableSchema().setFields(fields);
   }
 
   /**
-   * Merges a series of AVRO schema. The rule is simple: we choose the most generic type, e.g.
-   * we choose string between int and string.
+   * Merges a series of AVRO schema. The rule is simple: we choose the most generic type, e.g. we
+   * choose string between int and string.
    *
    * @param types a list of schema to merge
    * @return the merged schema
@@ -155,12 +137,17 @@ public class SchemaUtil {
   }
 
   public static List<FieldType> merge(List<FieldType> s, List<FieldType> t) {
-    Preconditions.checkArgument(s != null && t != null,
-        "SchemaUtil input cannot be null.");
-    Preconditions.checkArgument(s.size() == t.size(),
-        "Number of fields in both schema should match.");
+    if (s.isEmpty()) {
+      return t;
+    }
+    if (t.isEmpty()) {
+      return s;
+    }
+    Preconditions.checkArgument(
+        s.size() == t.size(), "Number of fields in both schema should match.");
     return IntStream.range(0, s.size())
-        .mapToObj(i -> FieldType.getCommonType(s.get(i), t.get(i))).collect(Collectors.toList());
+        .mapToObj(i -> FieldType.getCommonType(s.get(i), t.get(i)))
+        .collect(Collectors.toList());
   }
 
   public static Integer convertToInteger(String value) {
@@ -208,35 +195,42 @@ public class SchemaUtil {
         || "T".equalsIgnoreCase(value);
   }
 
-  public static LocalDate convertToDate(String value) {
+  public static String convertToDate(String value) {
     try {
-      return LocalDate.parse(value, DateTimeFormatter.ISO_DATE);
+      return LocalDate.parse(value, DateTimeFormatter.ISO_DATE)
+          .format(DateTimeFormatter.ISO_LOCAL_DATE);
     } catch (DateTimeParseException e) {
       return null;
     }
   }
 
-  public static LocalTime convertToTime(String value) {
+  public static String convertToTime(String value) {
     try {
-      return LocalTime.parse(value, DateTimeFormatter.ISO_TIME);
+      return LocalTime.parse(value, DateTimeFormatter.ISO_TIME)
+          .format(DateTimeFormatter.ISO_LOCAL_TIME);
     } catch (DateTimeParseException e) {
       return null;
     }
   }
 
   // TODO(b/121042936): Support customized format.
-  public static Temporal convertToDateTime(String value) {
+  public static String convertToDateTime(String value) {
     LocalDateTime localDateTime = convertToLocalDateTime(value);
     if (localDateTime != null) {
-      return localDateTime;
+      return localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
     OffsetDateTime offsetDateTime = convertToOffsetDateTime(value);
     if (offsetDateTime != null) {
-      return offsetDateTime;
+      return offsetDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
-    return convertToZonedDateTime(value);
+    ZonedDateTime zonedDateTime = convertToZonedDateTime(value);
+    if (zonedDateTime != null) {
+      return zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    }
+
+    return null;
   }
 
   private static LocalDateTime convertToLocalDateTime(String value) {
